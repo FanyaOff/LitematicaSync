@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "id": "litematicasync",
+  "version": "${version}",
+  "name": "LitematicaSync",
+  "description": "Synchronizes Litematica placements and configurations across different server IPs.",
+  "authors": [
+    "Fanya"
+  ],
+  "contact": {
+    "homepage": "https://modrinth.com/user/FanyaOff"
+  },
+  "license": "MIT",
+  "icon": "assets/litematicasync/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "com.fanya.litematicasync.client.LitematicaSyncClient"
+    ],
+    "main": [
+      "com.fanya.litematicasync.LitematicaSync"
+    ],
+    "modmenu": [
+      "com.fanya.litematicasync.client.LitematicaSyncModMenu"
+    ]
+  },
+  "mixins": [
+    "litematicasync.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric-api": "*",
+    "minecraft": "${minecraft_dependency}",
+    "malilib": ">=${malilib_version}",
+    "litematica": ">=${litematica_version}"
+  }
+}

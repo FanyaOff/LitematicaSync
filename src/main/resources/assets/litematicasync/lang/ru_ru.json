@@ -1,0 +1,13 @@
+{
+  "title.litematicasync.config": "Litematica Sync",
+  "category.litematicasync.groups": "Группы серверов",
+  "option.litematicasync.server_groups": "Группы",
+  "tooltip.litematicasync.server_groups": "Одна группа на строку: Название=ip1,ip2,ip3",
+  "label.litematicasync.group": "Группа",
+  "label.litematicasync.address": "Адрес",
+  "field.litematicasync.group_name": "Название группы",
+  "field.litematicasync.address": "Адрес сервера",
+  "button.litematicasync.add_group": "Добавить группу",
+  "button.litematicasync.add_address": "Добавить адрес",
+  "text.cloth-config.save_and_done": "Сохранить и выйти"
+}

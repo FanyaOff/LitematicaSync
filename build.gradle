@@ -1,0 +1,183 @@
+plugins {
+    id 'net.fabricmc.fabric-loom-remap' version "${loom_version}"
+    id 'maven-publish'
+}
+
+def mcTarget = sc.current.version
+def versionMatrix = [
+        "1.21.8" : [
+                minecraft: "1.21.8",
+                minecraftDependency: "1.21.8",
+                java: 21,
+                fabric: "0.136.1+1.21.8",
+                malilib: "0.25.7",
+                litematica: "0.23.7",
+                modmenu: "15.0.2"
+        ],
+        "1.21.9" : [
+                minecraft: "1.21.9",
+                minecraftDependency: "1.21.9",
+                java: 21,
+                fabric: "0.134.1+1.21.9",
+                malilib: "0.26.8",
+                litematica: "0.24.8",
+                modmenu: "16.0.1"
+        ],
+        "1.21.10": [
+                minecraft: "1.21.10",
+                minecraftDependency: "1.21.10",
+                java: 21,
+                fabric: "0.138.4+1.21.10",
+                malilib: "0.26.8",
+                litematica: "0.24.8",
+                modmenu: "16.0.1"
+        ],
+        "1.21.11": [
+                minecraft: "1.21.11",
+                minecraftDependency: "1.21.11",
+                java: 21,
+                fabric: "0.141.4+1.21.11",
+                malilib: "0.27.16",
+                litematica: "0.26.11",
+                modmenu: "17.0.1-beta.1"
+        ],
+        "26.1"   : [
+                minecraft: "26.1.2",
+                minecraftDependency: ">=26.1- <26.2-",
+                java: 25,
+                fabric: "0.154.2+26.1.2",
+                malilib: "0.28.9",
+                litematica: "0.27.9",
+                modmenu: "18.0.0"
+        ],
+        "26.2"   : [
+                minecraft: "26.2",
+                minecraftDependency: "26.2",
+                java: 25,
+                fabric: "0.154.2+26.2",
+                malilib: "0.29.3",
+                litematica: "0.28.3",
+                modmenu: "20.0.1"
+        ]
+]
+
+def versions = versionMatrix[mcTarget]
+if (versions == null) {
+    throw new GradleException("Unsupported Stonecutter target: ${mcTarget}")
+}
+
+ext.minecraft_version = versions.minecraft
+ext.minecraft_dependency = versions.minecraftDependency
+ext.fabric_version = versions.fabric
+ext.malilib_version = versions.malilib
+ext.litematica_version = versions.litematica
+ext.modmenu_version = versions.modmenu
+ext.target_java_version = versions.java
+
+version = project.mod_version
+group = project.maven_group
+
+base {
+    archivesName = "${project.archives_base_name}-${mcTarget}"
+}
+
+
+repositories {
+    maven {
+        name = "TerraformersMC"
+        url = "https://maven.terraformersmc.com/releases/"
+        content {
+            includeGroup "com.terraformersmc"
+        }
+    }
+    exclusiveContent {
+        forRepository {
+            maven {
+                name = "Modrinth"
+                url = "https://api.modrinth.com/maven"
+            }
+        }
+        filter {
+            includeGroup "maven.modrinth"
+        }
+    }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    if ((project.minecraft_version as String).startsWith("1.")) {
+        mappings loom.officialMojangMappings()
+    }
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+    modImplementation "maven.modrinth:malilib:${project.malilib_version}"
+    modImplementation "maven.modrinth:litematica:${project.litematica_version}"
+    modImplementation "com.terraformersmc:modmenu:${project.modmenu_version}"
+}
+
+processResources {
+    inputs.property "version", project.version
+    inputs.property "minecraft_version", project.minecraft_version
+    inputs.property "minecraft_dependency", project.minecraft_dependency
+    inputs.property "loader_version", project.loader_version
+    inputs.property "malilib_version", project.malilib_version
+    inputs.property "litematica_version", project.litematica_version
+    filteringCharset "UTF-8"
+
+    filesMatching("fabric.mod.json") {
+        expand "version": project.version,
+                "minecraft_version": project.minecraft_version,
+                "minecraft_dependency": project.minecraft_dependency,
+                "loader_version": project.loader_version,
+                "malilib_version": project.malilib_version,
+                "litematica_version": project.litematica_version
+    }
+}
+
+def targetJavaVersion = project.target_java_version as int
+tasks.withType(JavaCompile).configureEach {
+    // ensure that the encoding is set to UTF-8, no matter what the system default is
+    // this fixes some edge cases with special characters not displaying correctly
+    // see http://yodaconditions.net/blog/fix-for-java-file-encoding-problems-with-gradle.html
+    // If Javadoc is generated, this must be specified in that task too.
+    it.options.encoding = "UTF-8"
+    if (targetJavaVersion >= 10 || JavaVersion.current().isJava10Compatible()) {
+        it.options.release.set(targetJavaVersion)
+    }
+}
+
+java {
+    def javaVersion = JavaVersion.toVersion(targetJavaVersion)
+    if (JavaVersion.current() < javaVersion) {
+        toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
+    }
+    // Loom will automatically attach sourcesJar to a RemapSourcesJar task and to the "build" task
+    // if it is present.
+    // If you remove this line, sources will not be generated.
+    withSourcesJar()
+}
+
+jar {
+    from("LICENSE.txt") {
+        rename { "${it}_${project.archives_base_name}" }
+    }
+}
+
+// configure the maven publication
+publishing {
+    publications {
+        create("mavenJava", MavenPublication) {
+            artifactId = project.archives_base_name
+            from components.java
+        }
+    }
+
+    // See https://docs.gradle.org/current/userguide/publishing_maven.html for information on how to set up publishing.
+    repositories {
+        // Add repositories to publish to here.
+        // Notice: This block does NOT have the same function as the block in the top level.
+        // The repositories here will be used for publishing your artifact, not for
+        // retrieving dependencies.
+    }
+}

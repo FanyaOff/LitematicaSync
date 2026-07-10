@@ -1,0 +1,23 @@
+pluginManagement {
+    repositories {
+        maven {
+            name = 'Fabric'
+            url = 'https://maven.fabricmc.net/'
+        }
+        gradlePluginPortal()
+    }
+}
+
+plugins {
+    id "dev.kikugie.stonecutter" version "0.9.6"
+}
+
+stonecutter {
+    centralScript = "build.gradle"
+    kotlinController = false
+
+    create(rootProject) {
+        versions("1.21.8", "1.21.9", "1.21.10", "1.21.11")
+        versions("26.1", "26.2").buildscript("build.26.gradle")
+    }
+}

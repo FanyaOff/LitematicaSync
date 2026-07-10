@@ -1,0 +1,13 @@
+{
+  "title.litematicasync.config": "Litematica Sync",
+  "category.litematicasync.groups": "Server Groups",
+  "option.litematicasync.server_groups": "Groups",
+  "tooltip.litematicasync.server_groups": "One group per line: GroupName=ip1,ip2,ip3",
+  "label.litematicasync.group": "Group",
+  "label.litematicasync.address": "Address",
+  "field.litematicasync.group_name": "Group Name",
+  "field.litematicasync.address": "Server Address",
+  "button.litematicasync.add_group": "Add Group",
+  "button.litematicasync.add_address": "Add Address",
+  "text.cloth-config.save_and_done": "Save & Done"
+}
