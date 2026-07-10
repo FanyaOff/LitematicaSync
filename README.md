@@ -11,7 +11,7 @@ Do you play on servers with multiple proxy IPs (e.g., `play.pepeland.net`, `issu
 
 ## Screenshots
 
-_(You can add screenshots of your sleek config screen here)_
+<img width="1920" height="1009" alt="image" src="https://github.com/user-attachments/assets/0c4d1434-7c0a-44de-bf3e-ed66d7e72884" />
 
 ## How to Use
 
@@ -48,7 +48,7 @@ To use this mod, you need the following installed:
 
 ## Скриншоты
 
-_(Сюда можно добавить скриншоты красивого меню настроек)_
+<img width="1920" height="1009" alt="image" src="https://github.com/user-attachments/assets/0c4d1434-7c0a-44de-bf3e-ed66d7e72884" />
 
 ## Как использовать
 
