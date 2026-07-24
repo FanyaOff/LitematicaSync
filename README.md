@@ -11,7 +11,7 @@ Do you play on servers with multiple proxy IPs (e.g., `play.pepeland.net`, `issu
 
 ## Screenshots
 
-_(You can add screenshots of your sleek config screen here)_
+<img width="1920" height="1009" alt="image" src="https://github.com/user-attachments/assets/0c4d1434-7c0a-44de-bf3e-ed66d7e72884" />
 
 ## How to Use
 
@@ -37,18 +37,18 @@ To use this mod, you need the following installed:
 
 <div align="center">
   <h1>LitematicaSync | RU</h1>
-  <p>Fabric мод, который синхронизирует ваши схемы и настройки лайтматики между разными айпишниками серверов!</p>
+  <p>Мод, который синхронизирует ваши схемы и настройки лайтматики между разными айпишниками серверов!</p>
 </div>
 
 ## Особенности
 
-Играете на серверах с несколькими IP-адресами и устали терять свои схемы Litematica при переключении между ними? **LitematicaSync** решит эту проблему!
+Играете на серверах с несколькими айпи и устали терять свои схематы лайтматики при переключении между ними? **LitematicaSync** решит эту проблему!
 
 - **Группировка IP**: Объединяйте несколько адресов сервера в одну группу. Схематы лайтматики будут автоматически синхронизироваться и отображаться на всех айпишниках в этой группе!
 
 ## Скриншоты
 
-_(Сюда можно добавить скриншоты красивого меню настроек)_
+<img width="1920" height="1009" alt="image" src="https://github.com/user-attachments/assets/0c4d1434-7c0a-44de-bf3e-ed66d7e72884" />
 
 ## Как использовать
 
