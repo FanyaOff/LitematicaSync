@@ -13,7 +13,6 @@ import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ServerData;
 
-import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
@@ -23,6 +22,9 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.Optional;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 public class PlacementSyncManager {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
@@ -30,10 +32,19 @@ public class PlacementSyncManager {
     private static final int LOAD_DELAY_TICKS = 40;
 
     private final Path syncDirectory = FabricLoader.getInstance().getConfigDir().resolve("litematicasync").resolve("placements");
+
+    // фикс фриза - создаем отдельный поток для записи/чтения, а не делаем все в основном потоке
+    private final ExecutorService ioExecutor = Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "LitematicaSync-IO");
+        t.setDaemon(true);
+        return t;
+    });
+
     private ServerGroup activeGroup;
     private int loadDelayTicks = -1;
     private int saveDelayTicks = -1;
     private boolean loadedGroupPlacements;
+    private volatile Future<?> pendingSave;
 
     public static PlacementSyncManager getInstance() {
         return INSTANCE;
@@ -59,7 +70,7 @@ public class PlacementSyncManager {
     }
 
     public void onDisconnect() {
-        this.saveActiveGroup();
+        this.saveActiveGroupAsync();
         this.activeGroup = null;
         this.loadDelayTicks = -1;
         this.saveDelayTicks = -1;
@@ -72,7 +83,7 @@ public class PlacementSyncManager {
         }
 
         if (this.loadDelayTicks >= 0 && --this.loadDelayTicks <= 0) {
-            this.loadOrBootstrapActiveGroup();
+            this.loadOrBootstrapActiveGroupAsync();
             this.loadDelayTicks = -1;
         }
 
@@ -82,64 +93,91 @@ public class PlacementSyncManager {
             }
 
             if (--this.saveDelayTicks <= 0) {
-                this.saveActiveGroup();
+                this.saveActiveGroupAsync();
                 this.saveDelayTicks = LitematicaSyncConfig.get().periodicSaveTicks();
             }
         }
     }
 
-    private void loadOrBootstrapActiveGroup() {
+    private void loadOrBootstrapActiveGroupAsync() {
         if (this.activeGroup == null) {
             return;
         }
 
-        Path file = this.fileForGroup(this.activeGroup);
+        ServerGroup group = this.activeGroup;
+        Path file = this.fileForGroup(group);
 
         if (!Files.exists(file)) {
-            this.saveActiveGroup();
+            this.saveActiveGroupAsync();
             this.loadedGroupPlacements = true;
             return;
         }
 
-        try (Reader reader = Files.newBufferedReader(file)) {
-            JsonElement element = JsonParser.parseReader(reader);
+        Future<?> save = this.pendingSave;
 
-            if (!element.isJsonObject()) {
-                return;
+        this.ioExecutor.execute(() -> {
+            try {
+                if (save != null) {
+                    try { save.get(); } catch (Exception ignored) {}
+                }
+
+                JsonObject placements;
+
+                try (Reader reader = Files.newBufferedReader(file)) {
+                    JsonElement element = JsonParser.parseReader(reader);
+
+                    if (!element.isJsonObject()) {
+                        return;
+                    }
+
+                    JsonObject root = element.getAsJsonObject();
+                    placements = root.has("placements") && root.get("placements").isJsonObject()
+                            ? root.getAsJsonObject("placements")
+                            : root;
+                }
+
+                Minecraft.getInstance().execute(() -> {
+                    if (this.activeGroup != group) {
+                        return;
+                    }
+
+                    try {
+                        DataManager.getSchematicPlacementManager().loadFromJson(placements);
+                        this.loadedGroupPlacements = true;
+                        LitematicaSync.LOGGER.info("Loaded synced Litematica placements for group '{}'", group.name());
+                    } catch (Exception e) {
+                        LitematicaSync.LOGGER.error("Failed to apply synced placements for group '{}'", group.name(), e);
+                    }
+                });
+            } catch (Exception e) {
+                LitematicaSync.LOGGER.error("Failed to load synced placements for group '{}'", group.name(), e);
             }
-
-            JsonObject root = element.getAsJsonObject();
-            JsonObject placements = root.has("placements") && root.get("placements").isJsonObject()
-                    ? root.getAsJsonObject("placements")
-                    : root;
-
-            DataManager.getSchematicPlacementManager().loadFromJson(placements);
-            this.loadedGroupPlacements = true;
-            LitematicaSync.LOGGER.info("Loaded synced Litematica placements for group '{}'", this.activeGroup.name());
-        } catch (Exception e) {
-            LitematicaSync.LOGGER.error("Failed to load synced placements for group '{}'", this.activeGroup.name(), e);
-        }
+        });
     }
 
-    private void saveActiveGroup() {
+    private void saveActiveGroupAsync() {
         if (this.activeGroup == null) {
             return;
         }
 
-        try {
-            Files.createDirectories(this.syncDirectory);
+        ServerGroup group = this.activeGroup;
 
-            JsonObject root = new JsonObject();
-            root.addProperty("schema", 1);
-            root.addProperty("group", this.activeGroup.name());
-            root.add("placements", DataManager.getSchematicPlacementManager().toJson());
+        JsonObject root = new JsonObject();
+        root.addProperty("schema", 1);
+        root.addProperty("group", group.name());
+        root.add("placements", DataManager.getSchematicPlacementManager().toJson());
 
-            try (Writer writer = Files.newBufferedWriter(this.fileForGroup(this.activeGroup))) {
-                GSON.toJson(root, writer);
+        this.pendingSave = this.ioExecutor.submit(() -> {
+            try {
+                Files.createDirectories(this.syncDirectory);
+
+                try (Writer writer = Files.newBufferedWriter(this.fileForGroup(group))) {
+                    GSON.toJson(root, writer);
+                }
+            } catch (Exception e) {
+                LitematicaSync.LOGGER.error("Failed to save synced placements for group '{}'", group.name(), e);
             }
-        } catch (Exception e) {
-            LitematicaSync.LOGGER.error("Failed to save synced placements for group '{}'", this.activeGroup.name(), e);
-        }
+        });
     }
 
     private Path fileForGroup(ServerGroup group) {
